@@ -1,59 +1,41 @@
 """
-SMART FILE ORGANIZER
-Version: V0.1
+Smart File Organizer
+Version: V0.2
 
-Author: Farhan Khan
-Description:
-This script organizes files in a selected folder based on their file type.
+This project automatically organizes files in a folder
+based on their file extensions.
 
-Example:
-Before running script:
+New in V0.2:
+A logging system that records every file movement with
+a timestamp so users can track what the program did.
 
-Downloads/
-    image.png
-    resume.pdf
-    movie.mp4
-    notes.txt
-
-After running script:
-
-Downloads/
-    Images/
-        image.png
-    Documents/
-        resume.pdf
-        notes.txt
-    Videos/
-        movie.mp4
-
-This is the first version of the project. It focuses only on
-basic file sorting logic without any advanced features.
-
-Future versions will include:
-- Logging system
-- CLI interface
-- Undo option
-- GUI interface
+Author: Farhan
 """
 
 import os
 import shutil
 import json
+from datetime import datetime
 
 
-# ---------------------------------------------------------
+# ---------------------------------------------------
 # FUNCTION: load_config()
-# PURPOSE:
-# Reads the config.json file which contains mapping of
-# file extensions to their categories.
 #
-# Example:
-# ".jpg" -> Images
-# ".pdf" -> Documents
+# This function reads the config.json file which
+# contains the mapping of file extensions to
+# folder categories.
 #
-# This allows the script to understand where each file
-# should be moved.
-# ---------------------------------------------------------
+# Example inside config.json:
+#
+# {
+#   "Images": [".png", ".jpg"],
+#   "Documents": [".pdf", ".txt"]
+# }
+#
+# This allows the program to remain flexible.
+# If users want to add more file types later,
+# they only need to modify config.json.
+# ---------------------------------------------------
 
 def load_config():
 
@@ -63,103 +45,136 @@ def load_config():
     return config
 
 
-# ---------------------------------------------------------
-# FUNCTION: create_folder_if_not_exists()
+# ---------------------------------------------------
+# FUNCTION: write_log()
 #
-# PURPOSE:
-# Checks if a folder already exists. If it does not exist,
-# it creates the folder.
+# This function writes a log entry to logs.txt
 #
-# This prevents errors when organizing files.
-# ---------------------------------------------------------
+# Each entry contains:
+# - timestamp
+# - file name
+# - destination folder
+#
+# Logs are appended instead of overwritten so
+# users can keep a full history of operations.
+# ---------------------------------------------------
 
-def create_folder_if_not_exists(path):
+def write_log(message):
+
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    log_entry = f"[{current_time}] {message}\n"
+
+    with open("logs.txt", "a") as log_file:
+        log_file.write(log_entry)
+
+
+# ---------------------------------------------------
+# FUNCTION: create_folder_if_missing()
+#
+# This checks whether a folder already exists.
+# If not, the folder will be created.
+#
+# This prevents errors when moving files into
+# directories that do not yet exist.
+# ---------------------------------------------------
+
+def create_folder_if_missing(path):
 
     if not os.path.exists(path):
         os.makedirs(path)
 
 
-# ---------------------------------------------------------
-# FUNCTION: organize_files(folder_path)
+# ---------------------------------------------------
+# FUNCTION: organize_files()
 #
-# PURPOSE:
-# This is the core logic of the project.
+# This is the main engine of the program.
 #
-# Steps:
-# 1. Read configuration file
-# 2. Scan all files in the folder
+# Steps performed:
+#
+# 1. Load configuration rules
+# 2. Scan all files in the target folder
 # 3. Detect file extension
-# 4. Find category from config
-# 5. Move file to correct folder
-# ---------------------------------------------------------
+# 4. Match extension with category
+# 5. Create category folder if needed
+# 6. Move file to correct folder
+# 7. Record the action in logs.txt
+# ---------------------------------------------------
 
 def organize_files(folder_path):
 
     config = load_config()
 
-    # List all files inside folder
     files = os.listdir(folder_path)
 
     for file in files:
 
         full_path = os.path.join(folder_path, file)
 
-        # Skip directories
+        # Skip folders
         if os.path.isdir(full_path):
             continue
 
-        # Extract extension
         extension = os.path.splitext(file)[1].lower()
 
         moved = False
 
-        # Check which category this extension belongs to
         for category in config:
 
             if extension in config[category]:
 
                 category_folder = os.path.join(folder_path, category)
 
-                create_folder_if_not_exists(category_folder)
+                create_folder_if_missing(category_folder)
 
                 destination = os.path.join(category_folder, file)
 
                 shutil.move(full_path, destination)
 
-                print(f"Moved: {file} -> {category}")
+                message = f"Moved {file} → {category}"
+
+                print(message)
+
+                write_log(message)
 
                 moved = True
+
                 break
 
         # If extension not found in config
         if not moved:
 
             other_folder = os.path.join(folder_path, "Others")
-            create_folder_if_not_exists(other_folder)
+
+            create_folder_if_missing(other_folder)
 
             destination = os.path.join(other_folder, file)
 
             shutil.move(full_path, destination)
 
-            print(f"Moved: {file} -> Others")
+            message = f"Moved {file} → Others"
+
+            print(message)
+
+            write_log(message)
 
 
-# ---------------------------------------------------------
-# MAIN PROGRAM STARTS HERE
-# ---------------------------------------------------------
+# ---------------------------------------------------
+# MAIN PROGRAM
+# ---------------------------------------------------
 
 if __name__ == "__main__":
 
-    print("\nSmart File Organizer V0.1\n")
+    print("\nSmart File Organizer V0.2\n")
 
     folder = input("Enter the folder path you want to organize:\n")
 
     if not os.path.exists(folder):
 
-        print("\nError: Folder does not exist.")
+        print("Error: Folder does not exist.")
 
     else:
 
         organize_files(folder)
 
-        print("\nAll files have been organized successfully.")
+        print("\nOrganization completed successfully.")
